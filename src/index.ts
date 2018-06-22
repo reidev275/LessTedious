@@ -1,12 +1,15 @@
-import {
-  Connection,
-  Request,
-  TYPES,
-  TediousType,
-  ConnectionConfig as Config
-} from "tedious";
+import { Connection, Request, TYPES, TediousType } from "tedious";
 
-export { ConnectionConfig as Config } from "tedious";
+export interface Config {
+  server: string;
+  userName: string;
+  password: string;
+  options?: {
+    database?: string;
+    encrypt?: boolean;
+    instanceName?: string;
+  };
+}
 
 const getType = (x: any): TediousType => {
   switch (typeof x) {
