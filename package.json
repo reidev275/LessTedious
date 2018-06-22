@@ -1,0 +1,32 @@
+{
+  "name": "lesstedious",
+  "version": "1.0.0",
+  "description": "Wrapper over Tedious providing simple MS Sql access",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "homepage": "https://github.com/reidev275/LessTedious#readme",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reidev275/LessTedious"
+  },
+  "keywords": [
+    "sql",
+    "mssql",
+    "sqlserver",
+    "sql-server",
+    "database",
+    "msnodesql"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "tedious": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/tedious": "^1.8.33",
+    "typescript": "^2.9.2"
+  }
+}
