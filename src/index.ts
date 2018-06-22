@@ -3,10 +3,10 @@ import {
   Request,
   TYPES,
   TediousType,
-  ConnectionConfig
+  ConnectionConfig as Config
 } from "tedious";
 
-export interface Config extends ConnectionConfig {}
+export { ConnectionConfig as Config } from "tedious";
 
 const getType = (x: any): TediousType => {
   switch (typeof x) {
