@@ -1,12 +1,12 @@
 {
   "name": "lesstedious",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Wrapper over Tedious providing simple MS Sql access",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "homepage": "https://github.com/reidev275/LessTedious#readme",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+		"prepublishOnly": "tsc"
   },
   "repository": {
     "type": "git",
