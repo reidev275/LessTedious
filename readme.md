@@ -3,6 +3,8 @@
 Sql server access from node with Typescript types. 
 The three main concepts in the library are the `Query<A>` interface, the `execute` function, and the `Config` interface.  The basic idea is that you have a config and a query that are passed to the `execute` function.  The `Query<A>` interface uses a phantom type parameter which allows the definition of the return type along with the query rather than at the time of query execution.
 
+	npm install lesstedious
+
 ## Examples
 
 For all of the examples, we'll use the following Student interface:
