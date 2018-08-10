@@ -20,16 +20,20 @@ For all of the examples, we'll use the following Student interface:
 Just create a `Query<A>` value substituting the type of data you wish to be returned.  
 Make sure your select list names match your interface properties in spelling and casing..
 
+	import { Query, execute } from "lesstedious";
+
 	const all: Query<Student> = {
 		sql: "SELECT id, fullName, imageUrl from students with (nolock)"
 	};
 
-	const students: Student[] = execute(config, all);
+	const students: Promise<Student[]> = execute(config, all);
 
 
 ### Query with Parameters
 
 For queries that accept parameters you'll create a function that returns a `Query<A>` with the optional `params` property.
+
+	import { Query, execute } from "lesstedious";
 
 	export const byId = (id: number): Query<Student> => ({
 		sql:
@@ -38,3 +42,18 @@ For queries that accept parameters you'll create a function that returns a `Quer
 			"WHERE id = @id",
 		params: { id }
 	});
+
+	const studentWithId6 = byId(6);
+	
+	const students: Promise<Student[]> = execute(config, studentWithId6);
+
+
+### From Javascript
+
+	const { execute } = require("lesstedious");
+
+	const all = {
+		sql: "SELECT id, fullName, imageUrl from students with (nolock) order by fullName"
+	};
+
+	execute(config, all).then(students => console.log(students))
