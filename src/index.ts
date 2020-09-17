@@ -32,6 +32,50 @@ export interface Query<A> {
   params?: any;
 }
 
+const executeCommand = (
+  query: Query<any>,
+  connection: Connection
+): Promise<void> =>
+  new Promise((res, rej) => {
+    const request = new Request(query.sql, (err: any, count: number) => {
+      if (err) {
+        rej(err);
+      } else {
+        res();
+      }
+    });
+
+    if (query.params) {
+      Object.keys(query.params).forEach((x) => {
+        const val = query.params[x];
+        request.addParameter(x, getType(val), val);
+      });
+    }
+    connection.execSql(request);
+  });
+
+export const executeBulk = (
+  config: Config,
+  queries: Query<any>[]
+): Promise<void> =>
+  new Promise((res, rej) => {
+    const connection = new Connection(config);
+    connection
+      .on("connect", async (err: any) => {
+        if (err) {
+          rej(err);
+        } else {
+          for (const query of queries) {
+            await executeCommand(query, connection);
+          }
+          res();
+          connection.close();
+        }
+      })
+      .on("error", rej)
+      .on("errorMessage", rej);
+  });
+
 export const execute = <A>(config: Config, query: Query<A>): Promise<A[]> =>
   new Promise((res, rej) => {
     const rows: A[] = [];

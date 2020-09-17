@@ -1,6 +1,6 @@
 {
   "name": "lesstedious",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Wrapper over Tedious providing simple MS Sql access",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,7 +26,6 @@
     "tedious": "^2.6.1"
   },
   "devDependencies": {
-    "@types/tedious": "^1.8.33",
-    "typescript": "^2.9.2"
+    "@types/tedious": "^1.8.33"
   }
 }
