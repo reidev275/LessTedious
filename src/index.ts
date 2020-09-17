@@ -12,6 +12,9 @@ export interface Config {
 }
 
 const getType = (x: any): TediousType => {
+  if (x && typeof x == "string" && x.length && x.length > 1000) {
+    return TYPES.Text;
+  }
   switch (typeof x) {
     case "number":
       return x % 1 === 0 ? TYPES.Int : TYPES.Float;
@@ -34,39 +37,42 @@ export const execute = <A>(config: Config, query: Query<A>): Promise<A[]> =>
     const rows: A[] = [];
     let columns: string[] = [];
     const connection = new Connection(config);
-    connection.on("connect", (err: any) => {
-      if (err) {
-        rej(err);
-      } else {
-        const request = new Request(query.sql, (err: any, count: number) => {
-          if (err) {
-            rej(err);
-          } else {
-            res(rows);
-          }
-          connection.close();
-        })
-          .on("row", row => {
-            const obj = row.reduce(
-              (p: any, c: any, i: number) => ({
-                ...p,
-                [columns[i]]: c.value
-              }),
-              {}
-            );
-            rows.push(obj);
+    connection
+      .on("connect", (err: any) => {
+        if (err) {
+          rej(err);
+        } else {
+          const request = new Request(query.sql, (err: any, count: number) => {
+            if (err) {
+              rej(err);
+            } else {
+              res(rows);
+            }
+            connection.close();
           })
-          .on("columnMetadata", (meta: any[]) => {
-            columns = meta.map(x => x.colName);
-          });
+            .on("row", (row) => {
+              const obj = row.reduce(
+                (p: any, c: any, i: number) => ({
+                  ...p,
+                  [columns[i]]: c.value,
+                }),
+                {}
+              );
+              rows.push(obj);
+            })
+            .on("columnMetadata", (meta: any[]) => {
+              columns = meta.map((x) => x.colName);
+            });
 
-        if (query.params) {
-          Object.keys(query.params).forEach(x => {
-            const val = query.params[x];
-            request.addParameter(x, getType(val), val);
-          });
+          if (query.params) {
+            Object.keys(query.params).forEach((x) => {
+              const val = query.params[x];
+              request.addParameter(x, getType(val), val);
+            });
+          }
+          connection.execSql(request);
         }
-        connection.execSql(request);
-      }
-    });
+      })
+      .on("error", rej)
+      .on("errorMessage", rej);
   });
