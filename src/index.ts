@@ -8,6 +8,7 @@ export interface Config {
     database?: string;
     encrypt?: boolean;
     instanceName?: string;
+    requestTimeout?: number;
   };
 }
 
