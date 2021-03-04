@@ -28,6 +28,18 @@ const getType = (x: any): TediousType => {
   }
 };
 
+const toNewConfig = (config: Config) => ({
+  server: config.server,
+  options: config.options,
+  authentication: {
+    type: "default",
+    options: {
+      userName: config.userName,
+      password: config.password,
+    },
+  },
+});
+
 export interface Query<A> {
   sql: string;
   params?: any;
@@ -60,28 +72,42 @@ export const executeBulk = (
   queries: Query<any>[]
 ): Promise<void> =>
   new Promise((res, rej) => {
-    const connection = new Connection(config);
-    connection
-      .on("connect", async (err: any) => {
+    try {
+      const connection = new Connection(toNewConfig(config));
+      connection.connect((err: any) => {
         if (err) {
           rej(err);
-        } else {
-          for (const query of queries) {
-            await executeCommand(query, connection);
-          }
-          res();
-          connection.close();
         }
-      })
-      .on("error", rej)
-      .on("errorMessage", rej);
+      });
+      connection
+        .on("connect", async (err: any) => {
+          if (err) {
+            rej(err);
+          } else {
+            for (const query of queries) {
+              await executeCommand(query, connection);
+            }
+            res();
+            connection.close();
+          }
+        })
+        .on("error", rej)
+        .on("errorMessage", rej);
+    } catch (e) {
+      rej(e);
+    }
   });
 
 export const execute = <A>(config: Config, query: Query<A>): Promise<A[]> =>
   new Promise((res, rej) => {
     const rows: A[] = [];
     let columns: string[] = [];
-    const connection = new Connection(config);
+    const connection = new Connection(toNewConfig(config));
+    connection.connect((err: any) => {
+      if (err) {
+        rej(err);
+      }
+    });
     connection
       .on("connect", (err: any) => {
         if (err) {
@@ -94,20 +120,21 @@ export const execute = <A>(config: Config, query: Query<A>): Promise<A[]> =>
               res(rows);
             }
             connection.close();
-          })
-            .on("row", (row) => {
-              const obj = row.reduce(
-                (p: any, c: any, i: number) => ({
-                  ...p,
-                  [columns[i]]: c.value,
-                }),
-                {}
-              );
-              rows.push(obj);
-            })
-            .on("columnMetadata", (meta: any[]) => {
-              columns = meta.map((x) => x.colName);
-            });
+          });
+          request.on("row", (row) => {
+            const obj = row.reduce(
+              (p: any, c: any, i: number) => ({
+                ...p,
+                [columns[i]]: c.value,
+              }),
+              {}
+            );
+            rows.push(obj);
+          });
+          request.on("columnMetadata", (meta: any[]) => {
+            columns = meta.map((x) => x.colName);
+          });
+          request.on("error", rej);
 
           if (query.params) {
             Object.keys(query.params).forEach((x) => {
