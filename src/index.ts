@@ -9,6 +9,7 @@ export interface Config {
     encrypt?: boolean;
     instanceName?: string;
     requestTimeout?: number;
+    [key: string]: any;
   };
 }
 
