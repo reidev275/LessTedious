@@ -46,59 +46,6 @@ export interface Query<A> {
   params?: any;
 }
 
-const executeCommand = (
-  query: Query<any>,
-  connection: Connection
-): Promise<void> =>
-  new Promise((res, rej) => {
-    const request = new Request(query.sql, (err: any, count: number) => {
-      if (err) {
-        rej(err);
-      } else {
-        res();
-      }
-    });
-
-    if (query.params) {
-      Object.keys(query.params).forEach((x) => {
-        const val = query.params[x];
-        request.addParameter(x, getType(val), val);
-      });
-    }
-    connection.execSql(request);
-  });
-
-export const executeBulk = (
-  config: Config,
-  queries: Query<any>[]
-): Promise<void> =>
-  new Promise((res, rej) => {
-    try {
-      const connection = new Connection(toNewConfig(config));
-      connection.connect((err: any) => {
-        if (err) {
-          rej(err);
-        }
-      });
-      connection
-        .on("connect", async (err: any) => {
-          if (err) {
-            rej(err);
-          } else {
-            for (const query of queries) {
-              await executeCommand(query, connection);
-            }
-            res();
-            connection.close();
-          }
-        })
-        .on("error", rej)
-        .on("errorMessage", rej);
-    } catch (e) {
-      rej(e);
-    }
-  });
-
 export const connect = (config: Config): Promise<Connection> =>
   new Promise((res, rej) => {
     const connection = new Connection(toNewConfig(config));
@@ -156,66 +103,25 @@ export const executePool =
       connection.execSql(request);
     });
 
-export const execute = <A>(config: Config, query: Query<A>): Promise<A[]> =>
-  new Promise((res, rej) => {
-    const rows: A[] = [];
-    let columns: string[] = [];
-    const connection = new Connection(toNewConfig(config));
-    connection.connect((err: any) => {
-      if (err) {
-        rej(err);
-      }
-    });
-    connection
-      .on("connect", (err: any) => {
-        if (err) {
-          rej(err);
-        } else {
-          const request = new Request(query.sql, (err: any, count: number) => {
-            if (err) {
-              rej(err);
-            } else {
-              res(rows);
-            }
-            connection.close();
-          });
-          request.on("row", (row) => {
-            const obj = row.reduce(
-              (p: any, c: any, i: number) => ({
-                ...p,
-                [columns[i]]: c.value,
-              }),
-              {}
-            );
-            rows.push(obj);
-          });
-          request.on("columnMetadata", (meta: any[]) => {
-            columns = meta.map((x) => x.colName);
-          });
-          request.on("error", rej);
-
-          if (query.params) {
-            Object.keys(query.params).forEach((x) => {
-              const val = query.params[x];
-              request.addParameter(x, getType(val), val);
-            });
-          }
-          connection.execSql(request);
-        }
-      })
-      .on("error", rej)
-      .on("errorMessage", rej);
-  });
-
-const workflow = async () => {
-  //@ts-ignore sample
-  const config: Config = {};
+export const execute = async <A>(
+  config: Config,
+  query: Query<A>
+): Promise<A[]> => {
   const connection = await connect(config);
-  const runSql = executePool(connection);
+  const execSql = executePool(connection);
+  const result = await execSql(query);
+  connection.close();
+  return result;
+};
 
-  const query: Query<string> = {
-    sql: `select email from contacts`,
-  };
-
-  const results = await runSql(query);
+export const executeBulk = async (
+  config: Config,
+  queries: Query<any>[]
+): Promise<void> => {
+  const connection = await connect(config);
+  const execSql = executePool(connection);
+  for (const query of queries) {
+    await execSql(query);
+  }
+  connection.close();
 };
