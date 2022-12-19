@@ -99,6 +99,63 @@ export const executeBulk = (
     }
   });
 
+export const connect = (config: Config): Promise<Connection> =>
+  new Promise((res, rej) => {
+    const connection = new Connection(toNewConfig(config));
+    connection.connect((err: any) => {
+      if (err) {
+        rej(err);
+      }
+    });
+    connection
+      .on("connect", (err: any) => {
+        if (err) {
+          rej(err);
+        }
+        res(connection);
+      })
+      .on("error", rej)
+      .on("errorMessage", rej);
+  });
+
+export const executePool =
+  (connection: Connection) =>
+  <A>(query: Query<A>): Promise<A[]> =>
+    new Promise((res, rej) => {
+      const rows: A[] = [];
+      let columns: string[] = [];
+      const request = new Request(query.sql, (err: any, count: number) => {
+        if (err) {
+          rej(err);
+        } else {
+          res(rows);
+        }
+      });
+
+      request.on("row", (row) => {
+        const obj = row.reduce(
+          (p: any, c: any, i: number) => ({
+            ...p,
+            [columns[i]]: c.value,
+          }),
+          {}
+        );
+        rows.push(obj);
+      });
+      request.on("columnMetadata", (meta: any[]) => {
+        columns = meta.map((x) => x.colName);
+      });
+      request.on("error", rej);
+
+      if (query.params) {
+        Object.keys(query.params).forEach((x) => {
+          const val = query.params[x];
+          request.addParameter(x, getType(val), val);
+        });
+      }
+      connection.execSql(request);
+    });
+
 export const execute = <A>(config: Config, query: Query<A>): Promise<A[]> =>
   new Promise((res, rej) => {
     const rows: A[] = [];
@@ -149,3 +206,16 @@ export const execute = <A>(config: Config, query: Query<A>): Promise<A[]> =>
       .on("error", rej)
       .on("errorMessage", rej);
   });
+
+const workflow = async () => {
+  //@ts-ignore sample
+  const config: Config = {};
+  const connection = await connect(config);
+  const runSql = executePool(connection);
+
+  const query: Query<string> = {
+    sql: `select email from contacts`,
+  };
+
+  const results = await runSql(query);
+};
