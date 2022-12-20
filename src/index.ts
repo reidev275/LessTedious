@@ -103,9 +103,6 @@ export const connectPersistent = async (
   return connection;
 };
 
-const wait = (ms) =>
-  new Promise((res, rej) => setTimeout(() => res(undefined), ms));
-
 export const executePool = <A>(
   connection: Connection,
   query: Query<A>
@@ -148,15 +145,8 @@ export const executePool = <A>(
       connection.execSql(request);
     } else {
       rej("connection unavailable");
-      //      wait(300).then(() => {
-      //        connection.execSql(request);
-      //      });
     }
   });
-
-// baseline with existing execute
-// baseline with new execute
-// test with executePool
 
 export const execute = async <A>(
   config: Config,
