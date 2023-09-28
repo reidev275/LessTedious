@@ -8,15 +8,7 @@ import {
 import ConnectionPool from "./pool";
 
 //@ts-ignore sample config
-const config: Config = {
-  password: "pH378B7x!&JRek",
-  server: "siteprostg.database.windows.net",
-  userName: "siteprostg-admin",
-  options: {
-    database: "trackunit",
-    encrypt: true,
-  },
-};
+const config: Config = {};
 
 const wait = (ms) =>
   new Promise((res, rej) => setTimeout(() => res(undefined), ms));

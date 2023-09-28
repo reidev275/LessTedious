@@ -141,8 +141,6 @@ export const executePool = <A>(
       });
     }
 
-    // console.log({ connection });
-
     connection.execSql(request);
 
     //@ts-ignore
