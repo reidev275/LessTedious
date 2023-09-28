@@ -1,5 +1,6 @@
 import { waitForDebugger } from "inspector";
 import { Connection, Request, TYPES, TediousType } from "tedious";
+import ConnectionPool from "./pool";
 
 export interface Config {
   server: string;
@@ -30,7 +31,7 @@ const getType = (x: any): TediousType => {
   }
 };
 
-const toNewConfig = (config: Config) => ({
+export const toNewConfig = (config: Config) => ({
   server: config.server,
   options: config.options,
   authentication: {
@@ -140,21 +141,25 @@ export const executePool = <A>(
       });
     }
 
+    // console.log({ connection });
+
+    connection.execSql(request);
+
     //@ts-ignore
-    if (connection.available) {
-      connection.execSql(request);
-    } else {
-      rej("connection unavailable");
-    }
+    // if (connection.available) {
+    //   connection.execSql(request);
+    // } else {
+    //   rej("connection unavailable");
+    // }
   });
 
 export const execute = async <A>(
-  config: Config,
+  pool: ConnectionPool,
   query: Query<A>
 ): Promise<A[]> => {
-  const connection = await connect(config);
+  const connection = await pool.getConnection();
   const result = await executePool(connection, query);
-  connection.close();
+  pool.releaseConnection(connection);
   return result;
 };
 
