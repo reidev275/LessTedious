@@ -20,14 +20,8 @@ class ConnectionPool {
   }
 
   private async connect(connection: Connection) {
-    return new Promise<void>((resolve, reject) => {
-      connection.on("connect", (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
+    return new Promise<void>((res, rej) => {
+      connection.on("connect", (err) => (err ? rej(err) : res()));
       connection.connect();
     });
   }
