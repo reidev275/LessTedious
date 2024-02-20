@@ -4,6 +4,7 @@ import {
   executePool,
   Query,
   execute,
+  createPool,
 } from "./index";
 import ConnectionPool from "./pool";
 
@@ -15,7 +16,7 @@ const wait = (ms) =>
 
 const test = async () => {
   const poolSize = 10;
-  const pool = new ConnectionPool(config, poolSize);
+  const pool = createPool(config, poolSize);
 
   await pool.initialize();
 

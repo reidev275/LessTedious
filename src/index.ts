@@ -171,3 +171,6 @@ export const executeBulk = async (
   }
   connection.close();
 };
+
+export const createPool = (config: Config, poolSize: number) =>
+  new ConnectionPool(config, poolSize);
