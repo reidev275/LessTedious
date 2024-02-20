@@ -206,3 +206,6 @@ export const executePool = <A>(
       .on("error", rej)
       .on("errorMessage", rej);
   });
+
+export const createPool = (config: Config, poolSize) =>
+  new ConnectionPool(config, poolSize);
