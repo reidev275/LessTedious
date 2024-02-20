@@ -1,4 +1,5 @@
 import { Connection, Request, TYPES, TediousType } from "tedious";
+import ConnectionPool from "./pool";
 
 export interface Config {
   server: string;
@@ -29,7 +30,7 @@ const getType = (x: any): TediousType => {
   }
 };
 
-const toNewConfig = (config: Config) => ({
+export const toNewConfig = (config: Config) => ({
   server: config.server,
   options: config.options,
   authentication: {
@@ -121,6 +122,62 @@ export const execute = <A>(config: Config, query: Query<A>): Promise<A[]> =>
               res(rows);
             }
             connection.close();
+          });
+          request.on("row", (row) => {
+            const obj = row.reduce(
+              (p: any, c: any, i: number) => ({
+                ...p,
+                [columns[i]]: c.value,
+              }),
+              {}
+            );
+            rows.push(obj);
+          });
+          request.on("columnMetadata", (meta: any[]) => {
+            columns = meta.map((x) => x.colName);
+          });
+          request.on("error", rej);
+
+          if (query.params) {
+            Object.keys(query.params).forEach((x) => {
+              const val = query.params[x];
+              request.addParameter(x, getType(val), val);
+            });
+          }
+          connection.execSql(request);
+        }
+      })
+      .on("error", rej)
+      .on("errorMessage", rej);
+  });
+
+export const executePool = <A>(
+  config: Config,
+  pool: ConnectionPool,
+  query: Query<A>
+): Promise<A[]> =>
+  new Promise(async (res, rej) => {
+    const rows: A[] = [];
+    let columns: string[] = [];
+
+    const connection = await pool.getConnection();
+    connection.connect((err: any) => {
+      if (err) {
+        rej(err);
+      }
+    });
+    connection
+      .on("connect", (err: any) => {
+        if (err) {
+          rej(err);
+        } else {
+          const request = new Request(query.sql, (err: any, count: number) => {
+            if (err) {
+              rej(err);
+            } else {
+              res(rows);
+            }
+            pool.releaseConnection(connection);
           });
           request.on("row", (row) => {
             const obj = row.reduce(
