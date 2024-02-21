@@ -129,14 +129,17 @@ export const executePool = async <A>(
   );
 };
 
-export const createPool = (config: Config, poolSize) =>
-  new ConnectionPool(toNewConfig(config), poolSize);
+export const createPool = async (config: Config, poolSize: number) => {
+  const pool = new ConnectionPool(toNewConfig(config), poolSize);
+  await pool.initialize();
+  return pool;
+};
 
 export const executeBulk = async (
   config: Config,
   queries: Query<any>[]
 ): Promise<void> => {
-  const pool = createPool(config, 1);
+  const pool = await createPool(config, 1);
   for (const query of queries) {
     await executePool(pool, query);
   }
