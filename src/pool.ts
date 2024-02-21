@@ -1,19 +1,18 @@
-import { toNewConfig, Config } from "./index";
-import { Connection } from "tedious";
+import { Connection, ConnectionConfig } from "tedious";
 
 class ConnectionPool {
   private connections: Connection[] = [];
-  private config: Config;
+  private config: ConnectionConfig;
   private poolSize: number;
 
-  constructor(config: Config, poolSize: number) {
+  constructor(config: ConnectionConfig, poolSize: number) {
     this.config = config;
     this.poolSize = poolSize;
   }
 
   async initialize() {
     for (let i = 0; i < this.poolSize; i++) {
-      const connection = new Connection(toNewConfig(this.config));
+      const connection = new Connection(this.config);
       await this.connect(connection);
       this.connections.push(connection);
     }

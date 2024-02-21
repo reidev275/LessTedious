@@ -1,4 +1,10 @@
-import { Connection, Request, TYPES, TediousType } from "tedious";
+import {
+  Connection,
+  ConnectionConfig,
+  Request,
+  TYPES,
+  TediousType,
+} from "tedious";
 import ConnectionPool from "./pool";
 
 export interface Config {
@@ -30,7 +36,7 @@ const getType = (x: any): TediousType => {
   }
 };
 
-export const toNewConfig = (config: Config) => ({
+const toNewConfig = (config: Config): ConnectionConfig => ({
   server: config.server,
   options: config.options,
   authentication: {
@@ -47,120 +53,17 @@ export interface Query<A> {
   params?: any;
 }
 
-const executeCommand = (
-  query: Query<any>,
-  connection: Connection
-): Promise<void> =>
-  new Promise((res, rej) => {
-    const request = new Request(query.sql, (err: any, count: number) => {
-      if (err) {
-        rej(err);
-      } else {
-        res();
-      }
-    });
+type ConnectionCycle = { connection: Connection; release: () => any };
 
-    if (query.params) {
-      Object.keys(query.params).forEach((x) => {
-        const val = query.params[x];
-        request.addParameter(x, getType(val), val);
-      });
-    }
-    connection.execSql(request);
-  });
-
-export const executeBulk = (
-  config: Config,
-  queries: Query<any>[]
-): Promise<void> =>
-  new Promise((res, rej) => {
-    try {
-      const connection = new Connection(toNewConfig(config));
-      connection.connect((err: any) => {
-        if (err) {
-          rej(err);
-        }
-      });
-      connection
-        .on("connect", async (err: any) => {
-          if (err) {
-            rej(err);
-          } else {
-            for (const query of queries) {
-              await executeCommand(query, connection);
-            }
-            res();
-            connection.close();
-          }
-        })
-        .on("error", rej)
-        .on("errorMessage", rej);
-    } catch (e) {
-      rej(e);
-    }
-  });
-
-export const execute = <A>(config: Config, query: Query<A>): Promise<A[]> =>
-  new Promise((res, rej) => {
-    const rows: A[] = [];
-    let columns: string[] = [];
-    const connection = new Connection(toNewConfig(config));
-    connection.connect((err: any) => {
-      if (err) {
-        rej(err);
-      }
-    });
-    connection
-      .on("connect", (err: any) => {
-        if (err) {
-          rej(err);
-        } else {
-          const request = new Request(query.sql, (err: any, count: number) => {
-            if (err) {
-              rej(err);
-            } else {
-              res(rows);
-            }
-            connection.close();
-          });
-          request.on("row", (row) => {
-            const obj = row.reduce(
-              (p: any, c: any, i: number) => ({
-                ...p,
-                [columns[i]]: c.value,
-              }),
-              {}
-            );
-            rows.push(obj);
-          });
-          request.on("columnMetadata", (meta: any[]) => {
-            columns = meta.map((x) => x.colName);
-          });
-          request.on("error", rej);
-
-          if (query.params) {
-            Object.keys(query.params).forEach((x) => {
-              const val = query.params[x];
-              request.addParameter(x, getType(val), val);
-            });
-          }
-          connection.execSql(request);
-        }
-      })
-      .on("error", rej)
-      .on("errorMessage", rej);
-  });
-
-export const executePool = <A>(
-  config: Config,
-  pool: ConnectionPool,
+const executeInternal = <A>(
+  cycle: ConnectionCycle,
   query: Query<A>
 ): Promise<A[]> =>
   new Promise(async (res, rej) => {
     const rows: A[] = [];
     let columns: string[] = [];
 
-    const connection = await pool.getConnection();
+    const { connection, release } = cycle;
     connection.connect((err: any) => {
       if (err) {
         rej(err);
@@ -177,7 +80,7 @@ export const executePool = <A>(
             } else {
               res(rows);
             }
-            pool.releaseConnection(connection);
+            release();
           });
           request.on("row", (row) => {
             const obj = row.reduce(
@@ -207,5 +110,34 @@ export const executePool = <A>(
       .on("errorMessage", rej);
   });
 
+export const execute = <A>(config: Config, query: Query<A>): Promise<A[]> => {
+  const connection = new Connection(toNewConfig(config));
+  return executeInternal(
+    { connection, release: () => connection.close() },
+    query
+  );
+};
+export const executePool = async <A>(
+  pool: ConnectionPool,
+  query: Query<A>
+): Promise<A[]> => {
+  const connection = await pool.getConnection();
+
+  return executeInternal(
+    { connection, release: () => pool.releaseConnection(connection) },
+    query
+  );
+};
+
 export const createPool = (config: Config, poolSize) =>
-  new ConnectionPool(config, poolSize);
+  new ConnectionPool(toNewConfig(config), poolSize);
+
+export const executeBulk = async (
+  config: Config,
+  queries: Query<any>[]
+): Promise<void> => {
+  const pool = createPool(config, 1);
+  for (const query of queries) {
+    await executePool(pool, query);
+  }
+};
